@@ -694,7 +694,7 @@ while True:
     # check detection and emit debug only when state changes or periodically
     detected = check_detection_on_blue()
     now_ts = time.time()
-    if detected_lucky <= 0.95 and attack_idx >= 1 and not detected:
+    if detected_lucky <= 0.05 and attack_idx > 1 and not detected:
         detected = True
     if detected != _last_detection_state or (now_ts - _last_debug_emit_time) > 30:
         emit("debug", detection=detected)
