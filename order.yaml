@@ -1,6 +1,104 @@
+# Minimal additions: add execution_groups so orchestrator can build runtime flow
+execution_groups:
+  attack:
+    ping:
+      description: "Simple ping-only test flow"
+      target_label: "blue_vm"
+      steps:
+        - name: ping
+
+    hydra:
+      description: "SSH brute-force flow (hydra)."
+      target_label: "blue_vm"
+      steps:
+        - name: ping
+        - name: nmap
+        - name: hydra
+        - name: check_privileges
+
+    ssh_bruteforce_variant:
+      description: "SSH brute-force variant — limited attempts on common usernames."
+      target_label: "blue_vm"
+      steps:
+        - name: ping
+        - name: nmap
+        - name: ssh_bruteforce_variant
+        - name: check_privileges
+
+    smb_enum_exfil:
+      description: "SMB enumeration of open shares followed by file exfiltration."
+      target_label: "blue_vm"
+      steps:
+        - name: ping
+        - name: nmap
+        - name: smb_enum_exfil
+
+    dos_attack:
+      description: "Denial-of-Service flow to stress or deny services."
+      target_label: "blue_vm"
+      steps:
+        - name: ping
+        - name: nmap
+        - name: dos_attack
+
+  purpose:
+    none:
+      description: "testing purpose - no-op"
+      default_target_label: "other_vm_or_subnet"
+      steps: [ ]
+    recon_additional_servers:
+      description: "Discover additional VMs/hosts beyond Blue (network scan)."
+      default_target_label: "other_vm_or_subnet"
+      steps:
+        - name: recon_additional_servers
+        - name: ping
+    capture_destroy_data:
+      description: "SIMULATION-ONLY: search, capture, and stage/send a named file (simulator)."
+      target_label: "red_vm"
+      steps:
+        - name: ping
+        - name: capture_destroy_data
+    deny_web_services:
+      description: "SIMULATION-ONLY: simulate closing/blocking HTTP (port 80) on target."
+      target_label: "blue_vm"
+      steps:
+        - name: ping
+        - name: deny_web_services
+
+  defense:
+    none:
+      description: "testing purpose - no-op"
+      default_target_label: "other_vm_or_subnet"
+      steps: [ ]
+    intrusion_detection:
+      description: "Capture packet trace / run tcpdump to analyze traffic (intrusion detection)."
+      default_target_label: "defense"
+      steps:
+        - name: nmap
+        - name: intrusion_detection
+        - name: system_hardening
+    system_hardening:
+      description: "OS hardening audit (nmap verification, close ports, config checks)."
+      default_target_label: "defense"
+      steps:
+        - name: nmap
+        - name: system_hardening
+    sudo_harden:
+      description: "Simulate hardening / de-escalation of sudo privileges (simulator)."
+      default_target_label: "defense"
+      steps:
+        - name: nmap
+        - name: sudo_harden
+    firewall_update:
+      description: "Optional: add iptables rules to block malicious sources or ports."
+      default_target_label: "defense"
+      steps:
+        - name: firewall_update
+
+# (Original top-level sections kept below for backward compatibility)
 attack:
+  type: attack
   description: "Attacker flows from initial contact -> enumeration -> access/denial."
-  # Replace target_label values with actual IPs when orchestrating runs
   hydra:
     description: "SSH brute-force flow (hydra)."
     target_label: "blue_vm"
@@ -35,7 +133,7 @@ attack:
         name: check_privileges
         action_desc: "Simulate checking user/account privileges after access."
 
-  port80:
+  port80_attack:
     description: "HTTP enumeration/injection flow against web service."
     target_label: "blue_vm"
     steps:
@@ -52,7 +150,7 @@ attack:
         name: check_privileges
         action_desc: "Simulate checking if web exploitation yielded access."
 
-  dos:
+  dos_attack:
     description: "Denial-of-Service flow to stress or deny services."
     target_label: "blue_vm"
     steps:
@@ -65,8 +163,16 @@ attack:
       - step: 3
         name: dos_attack
         action_desc: "Simulated DoS stress test (hping3/ping or simulator)."
+  ping:
+    description: "Testing ping"
+    target_label: "blue_vm"
+    steps:
+      - step: 1
+        name: ping
+        action_desc: "Initial reachability check."
 
 purpose:
+  type: purpose
   description: "Post-compromise objectives executed after Red VM has control of a host."
   note: "These run after an attack sequence completes and control is achieved (or simulated success)."
   default_target_label: "other_vm_or_subnet"
@@ -99,18 +205,25 @@ purpose:
         name: capture_destroy_file_simulation
         action_desc: "Helper: simulate removal of the file from the target (prompts.yaml stage capture_destroy_file_simulation)."
 
-  close_port80_simulation:
+  deny_web_services:
     description: "SIMULATION-ONLY: simulate closing/blocking HTTP (port 80) on target."
     target_label: "blue_vm"
     steps:
       - step: 1
-        name: close_port80_simulation
-        action_desc: "SIMULATION-ONLY: simulate blocking or stopping HTTP on the target (prompts.yaml stage close_port80_simulation)."
+        name: ping
+        action_desc: "Initial reachability check to target host (ping)."
       - step: 2
         name: deny_web_services
         action_desc: "If needed, run deny_web_services (prompts.yaml stage) to emulate service denial."
 
+  none:
+    description: "testing purposes"
+    default_target_label: "other_vm_or_subnet"
+    steps: [ ]
+
+
 defense:
+  type: defense
   description: "Defensive reaction steps executed after each attack sequence (so defenses get time to detect and respond)."
   note: "Orchestrator should run this sequence after every attack flow (hydra/port80/dos) to simulate detection & response."
 
@@ -169,6 +282,8 @@ defense:
       - step: 2
         name: firewall_update
         action_desc: "Add/modify iptables rules (prompts.yaml stage firewall_update)."
-      - step: 3
-        name: intrusion_detection
-        action_desc: "Continue monitoring to confirm effectiveness of firewall rules."
+
+  none:
+    description: "testing purposes"
+    default_target_label: "other_vm_or_subnet"
+    steps: [ ]

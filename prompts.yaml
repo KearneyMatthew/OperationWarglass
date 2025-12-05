@@ -14,7 +14,7 @@ stages:
       (no explanations, no code fences, no extra text). Use double quotes only.
       The JSON must follow this schema:
       {"tool": "<tool name>", "params": { ... }}
-      Allowed tool values: nmap, ping, tcpdump, iptables, hydra, simulator.
+      Allowed tool values: ping
       The 'target' parameter must be a single IPv4 address (for example, 192.168.100.2).
       Example valid response:
       {"tool":"ping","params":{"target":"192.168.100.2","count":1}}
@@ -27,10 +27,12 @@ stages:
       The JSON must follow this schema:
       {"tool": "<tool name>", "params": { ... }}
       Allowed tool values: nmap, ping, tcpdump, iptables, hydra, simulator.
-      The 'target' parameter must be a single IPv4 address (e.g., 192.168.100.2).
-      Use only whitelisted flags (e.g., -sV, -sS, -A) defined in whitelist.yaml.
-      Example valid response:
+      The 'target' parameter must be a cidr address (e.g., 192.168.100.2).
+      Use only whitelisted flags defined in whitelist.yaml.
+      If you need multiple flags, return them as an array under "flags_list" (for example ["-sS","-A"]) instead of a combined string.
+      Example valid responses:
       {"tool":"nmap","params":{"target":"192.168.100.2","flags":"-sV"}}
+      {"tool":"nmap","params":{"target":"192.168.100.2","flags_list":["-sS","-A"]}}
 
   - name: hydra
     prompt: >
@@ -49,34 +51,37 @@ stages:
   # Attack Category Stages
   - name: ssh_bruteforce_variant
     prompt: >
-      You are simulating an SSH brute-force operation using hydra.
-      Respond with a JSON object only (no explanations, no text, no code fences).
-      Schema:
-      {"tool":"hydra","params":{"target":"<ipv4>","username":"<username>","wordlist":"<path>","max_attempts":<int>}}
-      Use "hydra" as the tool.
-      Target must be a valid IPv4.
-      Select usernames likely to exist (e.g., root, admin, user).
-      Limit 'max_attempts' to a reasonable value under 500.
-      Example:
-      {"tool":"hydra","params":{"target":"192.168.60.2","username":"root","wordlist":"/usr/share/wordlists/rockyou.txt","max_attempts":250}}
+      You are simulating an SSH brute-force attempt against the target.
+      Reply with only a single valid JSON object and nothing else (no explanation, no code fences, no text).
+      The JSON must use double quotes only and match this schema:
+      {"tool":"hydra","params":{"target":"<ipv4>","username":"<username>","wordlist":"<allowed_path>","max_attempts":<int>}}
+      The 'target' must be a single IPv4 address (e.g., 192.168.100.2).
+      The 'username' must be provided; if not known, use "admin".
+      The 'wordlist' must be one of the allowed paths in whitelist.yaml (e.g., /usr/share/wordlists/rockyou.txt).
+      'max_attempts' should be between 1 and 1000.
+      Example valid response:
+      {"tool":"hydra","params":{"target":"192.168.100.2","username":"admin","wordlist":"/usr/share/wordlists/rockyou.txt","max_attempts":100}}
 
-  - name: port80_attack
+
+  - name: smb_enum_exfil
     prompt: >
-      You are initiating an HTTP-based enumeration or injection attack on port 80.
-      Respond only with a valid JSON object (no extra text).
+      You are performing SMB enumeration followed by simulated file exfiltration.
+      Respond only with a single valid JSON object.
       Schema:
-      {"tool":"nmap","params":{"target":"<ipv4>","flags":"<allowed_http_flags>"}}
-      Use "nmap" or "curl" (if allowed by whitelist.yaml) for reconnaissance of web services.
-      Include only safe, whitelisted flags such as -p 80, -sV, -A.
+      {"tool":"smb","params":{"target":"192.168.60.3","share":"\\\\192.168.60.3\\public","action":"enum_and_exfil","filename":"Employees.xlsx"}}
+      Allowed tool value: smb (or simulator if smb is blocked).
+      The 'share' field must be a UNC path such as "\\\\192.168.60.3\\public".
+      The 'filename' should represent a discovered file in the share.
       Example:
-      {"tool":"nmap","params":{"target":"192.168.60.3","flags":"-p 80 -sV"}}
+      {"tool":"smb","params":{"target":"192.168.60.3","share":"\\\\192.168.60.3\\public","action":"enum_and_exfil","filename":"Employees.xlsx"}}
+  
 
   - name: dos_attack
     prompt: >
       You are simulating a denial-of-service operation designed to stress a target system.
       Respond only with a valid JSON object.
       Schema:
-      {"tool":"<tool>","params":{"target":"<ipv4>","duration":<seconds>,"intensity":<1-10>}}
+      {"tool":"hping3","params":{"target":"192.168.60.2","duration":60,"intensity":5}}
       Allowed tool values: hping3, iptables (for defensive response), or ping (for load simulation).
       Example:
       {"tool":"hping3","params":{"target":"192.168.60.2","duration":60,"intensity":5}}
@@ -88,9 +93,9 @@ stages:
       You are tasked with mapping the network to discover additional systems beyond the known Blue host.
       Respond with only a single valid JSON object.
       Schema:
-      {"tool":"nmap","params":{"target":"<ipv4/subnet>","flags":"-sP"}}
+      {"tool":"nmap","params":{"target":"192.168.100.0/24","flags":"-A"}}
       Example:
-      {"tool":"nmap","params":{"target":"192.168.60.0/24","flags":"-sP"}}
+      {"tool":"nmap","params":{"target":"192.168.100.0/24","flags":"-A"}}
 
   - name: capture_destroy_data
     prompt: >
@@ -117,9 +122,9 @@ stages:
       PURPOSE: Check account privileges.
       Respond with only a single valid JSON object describing the account privileges (simulation-only).
       Schema:
-      {"tool":"simulator","params":{"target":"<ipv4>","user":"<username>","privilege_level":"<note>","message":"<note>"}}
+      {"tool":"check_privileges","params":{"target":"192.168.60.3","user":"admin","privilege_level":"sudo","message":"user has sudo privileges"}}
       Example:
-      {"tool":"simulator","params":{"target":"192.168.60.3","user":"admin","privilege_level":"sudo","message":"simulated: user has sudo privileges"}}
+      {"tool":"check_privileges","params":{"target":"192.168.60.3","user":"admin","privilege_level":"sudo","message":"user has sudo privileges"}}
 
   # Defense Stages
   - name: firewall_update
@@ -127,27 +132,28 @@ stages:
       STAGE: FIREWALL UPDATE
       You are an automated cyber defense AI agent. Reply with only a single valid JSON object and nothing else.
       Use double quotes only. The JSON must follow this schema:
-      {"tool":"iptables","params":{"action":"<action>","chain":"<chain>","rule":"<rule>"}}
+      {"tool":"iptables","params":{"action":"<action>","chain":"<chain>","rule":"<rule>","src":"<ipv4_or_cidr>"}}
       THIS STAGE REQUIRES tool = "iptables". Do NOT return any other tool value.
+      The 'src' parameter must be provided; use "0.0.0.0/0" if the rule applies to all sources.
       Example valid response:
-      {"tool":"iptables","params":{"action":"add","chain":"INPUT","rule":"-p tcp --dport 22 -j DROP"}}
+      {"tool":"iptables","params":{"action":"add","chain":"INPUT","rule":"-p tcp --dport 22 -j DROP","src":"0.0.0.0/0"}}
 
   - name: intrusion_detection
     prompt: >
       STAGE: INTRUSION DETECTION
       You are an automated cyber defense AI agent. Reply with only a single valid JSON object and nothing else.
       Use double quotes only. The JSON must follow this schema:
-      {"tool":"tcpdump","params":{"interface":"<interface>","duration":<seconds>}}
-      THIS STAGE REQUIRES tool = "tcpdump". Do NOT return any other tool value.
+      {"tool":"blue_detection_agent","params":{"script":"blue_detection_agent.py"}}
+      THIS STAGE REQUIRES tool = "blue_detection_agent". Do NOT return any other tool value.
       Example valid response:
-      {"tool":"tcpdump","params":{"interface":"eth0","duration":60}}
+      {"tool":"blue_detection_agent","params":{"script":"blue_detection_agent.py"}}
 
   - name: system_hardening
     prompt: >
       STAGE: SYSTEM HARDENING
       You are an automated cyber defense AI agent. Reply with only a single valid JSON object and nothing else.
       Use double quotes only. The JSON must follow this schema:
-      {"tool":"nmap","params":{"target":"<ipv4>","flags":"<allowed_flags>"}}
+      {"tool":"blue_detection_agent.py","params":{"target":"<ipv4>","flags":"<allowed_flags>"}}
       THIS STAGE REQUIRES tool = "nmap". Do NOT return any other tool value.
       Example valid response:
       {"tool":"nmap","params":{"target":"192.168.100.3","flags":"-sS"}}

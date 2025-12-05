@@ -188,6 +188,19 @@ def validate_and_build(action: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
             if not isinstance(raw_val, str) or not is_valid_ip(raw_val):
                 raise ValueError(f"Invalid IP for parameter '{pname}': {raw_val}")
             validated[pname] = raw_val
+        elif ptype == "cidr":
+            if not isinstance(raw_val, str):
+                raise ValueError(f"CIDR parameter '{pname}' must be a string")
+            import ipaddress
+            try:
+                # Accepts both IPs and CIDR ranges
+                ipaddress.ip_network(raw_val, strict=False)
+            except Exception:
+                try:
+                    ipaddress.ip_address(raw_val)
+                except Exception:
+                    raise ValueError(f"Invalid CIDR/IP for parameter '{pname}': {raw_val}")
+            validated[pname] = raw_val
         elif ptype == "alnum":
             validated[pname] = sanitize_alnum(raw_val)
         elif ptype == "ports":
@@ -252,6 +265,7 @@ if __name__ == "__main__":
         {"tool": "nmap", "params": {"target": "192.168.60.3", "flags": "-sV"}},
         {"tool": "ping", "target": "192.168.60.3"},  # top-level params style
         {"tool": "tcpdump", "params": {"interface": "eth1", "duration": 10}},
+        {"tool": "blue_detection_agent", "params": {"script": "blue_detection_agent.py"}},
     ]
     for t in tests:
         try:

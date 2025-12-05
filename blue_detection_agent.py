@@ -12,7 +12,10 @@ import subprocess
 # === CONFIG ===
 CONTROLLER_IP = "192.168.60.2"     # controller VM IP
 CONTROLLER_PORT = 50505            # must match orchestrator listening port
-PATTERN = re.compile(r"(intrusion|ssh|bruteforce|attack)", re.IGNORECASE)
+PATTERN = re.compile(
+    r"(failed password|invalid user|connection closed by authenticating user|brute[- ]?force|intrusion detected|possible attack)",
+    re.IGNORECASE
+)
 CHECK_INTERVAL = 3                 # seconds between log scans
 LOG_PATH = "/var/log/syslog"       # path
 

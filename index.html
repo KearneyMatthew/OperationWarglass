@@ -47,11 +47,8 @@
     <div class="controls">
       <label>Attack
         <select id="attack">
-          <option value="ping">Ping</option>
-          <option value="nmap">Nmap Scan</option>
-          <option value="hydra">Hydra SSH</option>
           <option value="ssh_bruteforce_variant">SSH Brute Force Variant</option>
-          <option value="port80_attack">Port 80 Attack</option>
+          <option value="smb_enum_exfil">Server Message Block</option>
           <option value="dos_attack">DoS Attack</option>
         </select>
       </label>
@@ -61,6 +58,7 @@
           <option value="recon_additional_servers">Recon Additional Servers</option>
           <option value="capture_destroy_data">Capture/Destroy Data</option>
           <option value="deny_web_services">Deny Web Services</option>
+          <option value="none">None</option>
         </select>
       </label>
 
@@ -69,6 +67,7 @@
           <option value="firewall_update">Firewall Update</option>
           <option value="intrusion_detection">Intrusion Detection</option>
           <option value="system_hardening">System Hardening</option>
+          <option value="none">None</option>
         </select>
       </label>
 
@@ -104,12 +103,6 @@
         <div class="logs-list" id="serverRuns">Loading...</div>
         <div class="log-view" id="serverLog">Select a run to view the full logfile here.</div>
       </div>
-
-      <div style="flex:1;">
-        <h3>Open Local Log</h3>
-        <input type="file" id="localFile" accept=".log,.txt" />
-        <div class="log-view" id="localLog">No local file loaded.</div>
-      </div>
     </div>
   </section>
 </main>
@@ -127,11 +120,8 @@ function switchTab(name) {
 
 /* ---------- Description updates ---------- */
 const descriptions = {
-  ping: "Ping — test connectivity to target host.",
-  nmap: "Nmap Scan — detect open ports and services.",
-  hydra: "Hydra SSH — simulate SSH brute-force attack.",
   ssh_bruteforce_variant: "SSH Brute Force Variant — limited attempts on common usernames.",
-  port80_attack: "Port 80 Attack — target HTTP service on Blue.",
+  smb_enum_exfil: "SMB enumeration and simulated file exfiltration.",
   dos_attack: "Denial of Service — stress target system.",
 
   recon_additional_servers: "Recon of additional servers beyond Blue — discover network hosts.",
@@ -258,14 +248,6 @@ async function loadServerLog(filename) {
 }
 fetchRunsList();
 
-/* ---------- Local file open (client-side) ---------- */
-document.getElementById('localFile').addEventListener('change', (ev) => {
-  const f = ev.target.files[0];
-  if (!f) { document.getElementById('localLog').textContent = "No local file loaded."; return; }
-  const reader = new FileReader();
-  reader.onload = () => { document.getElementById('localLog').textContent = reader.result; };
-  reader.readAsText(f);
-});
 </script>
 </body>
 </html>

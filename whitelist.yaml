@@ -1,4 +1,3 @@
-# whitelist.yaml
 version: 1
 default_timeout_seconds: 300
 
@@ -7,7 +6,7 @@ tools:
     description: "Network scanner for reconnaissance (read-only)"
     params:
       - name: target
-        type: ip
+        type: cidr
         required: true
       - name: flags
         type: enum
@@ -28,7 +27,7 @@ tools:
     description: "ICMP reachability check"
     params:
       - name: target
-        type: ip
+        type: ip_or_cidr
         required: true
       - name: count
         type: int
@@ -68,7 +67,7 @@ tools:
           - "FORWARD"
         required: true
       - name: src
-        type: ip
+        type: cidr
         required: true
       - name: action
         type: enum
@@ -100,7 +99,7 @@ tools:
         min: 1
         max: 1000
         required: false
-    template: "hydra -l {username} -P {wordlist} -t 4 -V ssh://{target}"
+    template: "hydra -I -l {username} -P {wordlist} -t 4 -V ssh://{target}"
     requires_approval: true
     notes: "Snapshot MUST be taken manually before approval. Rate-limit enforcement required."
 
@@ -121,6 +120,28 @@ tools:
     template: "sudo deluser {user} sudo"
     requires_approval: true
     notes: "Powerful defensive action. Always require manual approval and snapshot before execution."
+
+  smb:
+    description: "Simulated SMB enumeration and file exfiltration (safe, no real network impact)."
+    params:
+      - name: target
+        type: ip
+        required: true
+      - name: share
+        type: string
+        required: true
+      - name: filename
+        type: string
+        required: false
+      - name: action
+        type: enum
+        allowed:
+          - "enum_and_exfil"
+        required: true
+    template: "echo SIMULATION: SMB enumeration and file exfiltration of {filename} on {share}"
+    requires_approval: false
+    notes: "Simulates SMB share access and file exfiltration without touching real network or files."
+
 
   simulator:
     description: "Simulation-only: outputs completion messages; no real actions."
@@ -153,6 +174,12 @@ tools:
     template: "echo SIMULATION: {result} - {message}"
     requires_approval: false
     notes: "Outputs a message only. No destructive commands."
+  blue_detection_agent:
+    description: "Start Blue intrusion detection agent (runs python3 blue_detection_agent.py)."
+    params: []
+    template: "python3 blue_detection_agent.py"
+    requires_approval: false
+    notes: "LLM should return tool 'blue_detection' with an empty params object to start the IDS on Blue VM."
 
 # helper param types (informational)
 _param_types:
